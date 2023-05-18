@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>请求代码转换器</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 14px;
+            background-color: #f2f2f2;
+            color: #333;
+        }
+
+        h1 {
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        textarea {
+            width: 100%;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+            resize: none;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 14px;
+        }
+
+        button {
+            padding: 8px 16px;
+            border: none;
+            background-color: #007bff;
+            color: #fff;
+            cursor: pointer;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 14px;
+        }
+
+        button:hover {
+            background-color: #0069d9;
+        }
+
+        #container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+
+            -webkit-box-shadow: 0px 0px 15px 2px rgba(0, 0, 0, 0.1);
+            -moz-box-shadow: 0px 0px 15px 2px rgba(0, 0, 0, 0.1);
+            box-shadow: 0px 0px 15px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        #output {
+            height: 200px;
+        }
+    </style>
+    <script>
+        function convert() {
+          // 获取输入框内容
+          const input = document.getElementById("input").value.trim();
+          // 判断输入框是否为空
+          if (input === "") {
+            alert("请输入请求代码");
+            return;
+          }
+          // 按行分隔
+          const lines = input.split("\n").map(line => line.trim());
+          // 解析请求URL
+          const urlMatches = lines[0].match(/^([A-Z]+)\s+(\S+)\s+HTTP\/\d\.\d$/);
+          if (!urlMatches) {
+            alert("请求URL格式不正确");
+            return;
+          }
+          const method = urlMatches[1].toLowerCase();
+          const url = urlMatches[2];
+
+          // 解析请求头部和请求参数
+          let headers = {};
+          let params = {};
+          let isInParams = false;
+          for (let i = 1; i < lines.length; i++) {
+            const line = lines[i];
+            if (line === "") {
+              // 切换到解析请求参数
+              isInParams = true;
+              continue;
+            }
+            if (!isInParams) {
+              // 解析请求头部
+              const headerMatches = line.match(/^(\S+):\s*(.+)$/);
+              if (headerMatches) {
+                const key = headerMatches[1].toLowerCase();
+                const value = headerMatches[2];
+                headers[key] = value;
+              } else {
+                alert(`请求头部格式不正确：${line}`);
+                return;
+              }
+            } else {
+              // 解析请求参数
+              const paramMatches = line.match(/^(\S+)=(.+)$/);
+              if (paramMatches) {
+                const key = paramMatches[1];
+                const value = paramMatches[2];
+                params[key] = value;
+              } else {
+                alert(`请求参数格式不正确：${line}`);
+                return;
+              }
+            }
+          }
+
+          // 将请求代码转换为Python青龙脚本
+          const script = `# 导入所需模块
+import requests
+
+# 构建请求头部
+headers = ${JSON.stringify(headers, null, 2)}
+
+# 构建请求参数
+params = ${JSON.stringify(params, null, 2)}
+
+# 发送请求
+resp = requests.${method}("${url}", headers=headers, params=params)
+
+# 解析响应数据
+if resp.status_code == 200:
+    data = resp.json()
+else:
+    data = resp.text
+
+# 输出响应数据
+print(data)`;
+
+          // 将转换后的脚本显示在页面上
+          const output = document.getElementById("output");
+          output.value = script;
+
+          // 显示复制按钮
+          const copyButton = document.getElementById("copyButton");
+          copyButton.style.display = "inline-block";
+        }
+
+        function copyToClipboard() {
+          // 获取目标文本框
+          const output = document.getElementById("output");
+          // 选中文本
+          output.select();
+          // 执行复制操作
+          document.execCommand("copy");
+          // 弹出提示信息
+          alert("已复制到剪贴板");
+        }
+    </script>
+  </head>
+  <body>
+    <div id="container">
+        <h1>请求代码转换器</h1>
+        <p>请输入请求代码，将自动转换为Python青龙脚本</p >
+        <form>
+          <label for="input">请求代码：</label>
+          <textarea id="input" rows="10"></textarea>
+          <br>
+          <button type="button" onclick="convert()">转换</button>
+        </form>
+        <br>
+        <label for="output">Python青龙脚本：</label>
+        <textarea id="output" readonly></textarea>
+        <br>
+        <button id="copyButton" type="button" onclick="copyToClipboard()" style="display:none">复制代码</button>
+    </div>
+  </body>
+</html>
